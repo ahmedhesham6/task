@@ -1,0 +1,7 @@
+*.vscode
+*env
+*__pycache__
+*.db
+task.pdf
+*.DS_Store
+*.mako

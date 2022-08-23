@@ -1,0 +1,64 @@
+version: '3.5'
+
+services:
+
+    vernemq:
+        environment:
+            - DOCKER_VERNEMQ_ACCEPT_EULA=yes
+            - DOCKER_VERNEMQ_ALLOW_ANONYMOUS=on
+            - MQTT_TOPIC=thndr-trading
+        image: erlio/docker-vernemq
+        ports:
+            - "1883:1883"
+
+
+    streamer:
+        environment:
+            - MQTT_HOST=vernemq
+            - MQTT_PORT=1883
+            - MQTT_TOPIC=thndr-trading
+        image: thndr/streamer:0.2
+        depends_on:
+            - vernemq
+
+    subscriber:
+        environment:
+            - MQTT_HOST=vernemq
+            - MQTT_PORT=1883 
+            - MQTT_TOPIC=thndr-trading
+            - DATABASE_URL=postgresql+asyncpg://postgres:postgres@portflio-db/postgres
+        build: ./subscriber
+        depends_on:
+            - vernemq
+            - portflio-db
+    
+    portflio-db:
+        image: postgres:14.1-alpine
+        restart: always
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+        expose:
+            - 5432
+        ports:
+            - "5430:5432"
+        volumes: 
+            - portflio-db:/var/lib/postgresql/data
+
+    portflio:
+        build: ./portflio
+        command: bash -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 80 --reload"
+        environment:
+            - DATABASE_URL=postgresql://postgres:postgres@portflio-db/postgres
+        depends_on: 
+            - portflio-db
+        ports:
+            - 8000:80
+
+
+volumes:
+    portflio-db:
+
+
+
+
